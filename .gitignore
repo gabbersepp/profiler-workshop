@@ -1,0 +1,7 @@
+obj
+bin
+Debug
+x86
+x64
+.vs
+*.user
