@@ -21,7 +21,8 @@ void ProfilerCallback::FinalRelease()
 {
 }
 
-void __stdcall EnterCallbackCpp(FunctionID funcId,
+// just add "extern C" to leave the function name as it is, otherwise it will be manipulated during compiling. Then we can not call it anymore from assembler
+extern "C" void _stdcall EnterCallbackCpp(FunctionID funcId,
 	UINT_PTR clientData,
 	COR_PRF_FRAME_INFO func,
 	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo) {
@@ -34,6 +35,25 @@ void __stdcall EnterCallbackCpp(FunctionID funcId,
 
 	delete[] output;
 }
+
+#ifdef _WIN64
+// those functions are defined in the assembler file
+
+EXTERN_C void _fastcall FnEnterCallback(FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func,
+	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo);
+
+EXTERN_C void FnLeaveCallback(FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func,
+	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo);
+
+EXTERN_C void FnTailcallCallback(FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func);
+#else
+
 
 void __declspec(naked) FnEnterCallback(
 	FunctionID funcId,
@@ -69,12 +89,14 @@ void __declspec(naked) FnTailcallCallback(FunctionID funcId,
 	}
 }
 
+#endif
+
 HRESULT __stdcall ProfilerCallback::Initialize(IUnknown* pICorProfilerInfoUnk)
 {
 	std::cout << "init";
 	pICorProfilerInfoUnk->QueryInterface(IID_ICorProfilerInfo2, (LPVOID*)&iCorProfilerInfo);
 	iCorProfilerInfo->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS | COR_PRF_MONITOR_ENTERLEAVE);
-	iCorProfilerInfo->SetEnterLeaveFunctionHooks2((FunctionEnter2*) & FnEnterCallback, (FunctionLeave2*) & FnLeaveCallback, (FunctionTailcall2*) & FnTailcallCallback);
+	iCorProfilerInfo->SetEnterLeaveFunctionHooks2((FunctionEnter2*) &FnEnterCallback, (FunctionLeave2*) & FnLeaveCallback, (FunctionTailcall2*) & FnTailcallCallback);
 
 	return S_OK;
 }
@@ -88,6 +110,7 @@ bool GetFunctionNameByFunctionId(FunctionID functionId, char* output, ULONG outp
 	memset(functionName, 0, 1000);
 
 	iCorProfilerInfo->GetTokenAndMetaDataFromFunction(functionId, IID_IMetaDataImport, (IUnknown**)&metadata, &methodToken);
+
 	metadata->GetMethodProps(methodToken, &typeDefToken, functionName, 1000, &wcbCount, NULL, NULL, NULL, NULL, NULL);
 	wcstombs(output, functionName, outputLength);
 	metadata->Release();

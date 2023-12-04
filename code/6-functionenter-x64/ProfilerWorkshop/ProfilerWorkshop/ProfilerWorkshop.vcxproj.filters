@@ -76,4 +76,9 @@
       <Filter>Quelldateien</Filter>
     </Midl>
   </ItemGroup>
+  <ItemGroup>
+    <MASM Include="X64.asm">
+      <Filter>Quelldateien</Filter>
+    </MASM>
+  </ItemGroup>
 </Project>
