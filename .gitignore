@@ -1,7 +1,9 @@
 obj
 bin
 Debug
+Release
 x86
 x64
 .vs
 *.user
+bak
