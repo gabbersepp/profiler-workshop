@@ -31,7 +31,40 @@ extern "C" void _stdcall EnterCallbackCpp(FunctionID funcId,
 
 	GetFunctionNameByFunctionId(funcId, output, 1000);
 
-	std::cout << "Function enter: " << output << "\r\n";
+	if (strcmp(output, "Blub_i") == 0) {
+		std::cout << "Function enter: Blub_i with value:";
+		COR_PRF_FUNCTION_ARGUMENT_RANGE range = argumentInfo->ranges[0];
+		UINT_PTR valuePtr = range.startAddress;
+		int* ptr = (int*)valuePtr;
+		std::cout << "" << * ptr << "\r\n";
+	}
+
+	if (strcmp(output, "Blub_arr") == 0) {
+		std::cout << "Function enter: Blub_arr with values: ";
+		int** ptrToMethodTablePointer = (int**)(argumentInfo->ranges[0].startAddress);
+		int* methodTablePtr = *ptrToMethodTablePointer;
+		methodTablePtr += 2; //skip MethodTablePtr
+		long length = *(long*)methodTablePtr;
+		std::cout << "Length: " << length << ", ";
+		methodTablePtr += 2; // skip array length
+		for (int i = 0; i < length; i++) {
+			std::cout << *(methodTablePtr + i);
+		}
+	}
+
+	if (strcmp(output, "Blub_str") == 0) {
+		std::cout << "Function enter: Blub_str with values: ";
+		char** ptrToMethodTablePointer = (char**)(argumentInfo->ranges[0].startAddress);
+		char* methodTablePtr = *ptrToMethodTablePointer;
+		methodTablePtr += 8; //skip MethodTablePtr
+		int length = *(int*)methodTablePtr;
+		std::cout << "Length: " << length << ", ";
+		methodTablePtr += 4; // skip string length
+		for (int i = 0; i < length; i++) {
+			std::cout << *methodTablePtr;
+			methodTablePtr += 2;
+		}
+	}
 
 	delete[] output;
 }
@@ -95,7 +128,7 @@ HRESULT __stdcall ProfilerCallback::Initialize(IUnknown* pICorProfilerInfoUnk)
 {
 	std::cout << "init";
 	pICorProfilerInfoUnk->QueryInterface(IID_ICorProfilerInfo2, (LPVOID*)&iCorProfilerInfo);
-	iCorProfilerInfo->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS | COR_PRF_MONITOR_ENTERLEAVE);
+	iCorProfilerInfo->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS | COR_PRF_MONITOR_ENTERLEAVE | COR_PRF_ENABLE_FUNCTION_ARGS);
 	iCorProfilerInfo->SetEnterLeaveFunctionHooks2((FunctionEnter2*) &FnEnterCallback, (FunctionLeave2*) & FnLeaveCallback, (FunctionTailcall2*) & FnTailcallCallback);
 
 	return S_OK;
