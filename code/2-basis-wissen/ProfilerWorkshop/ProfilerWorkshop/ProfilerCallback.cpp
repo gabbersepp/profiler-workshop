@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "ProfilerCallback.h"
 #include<iostream>
+#include <corprof.h>
+#include <thread>
+
+CComQIPtr<ICorProfilerInfo2> iCorProfilerInfo;
 
 ProfilerCallback::ProfilerCallback() {
 	std::cout << "constructor";
@@ -18,6 +22,9 @@ void ProfilerCallback::FinalRelease()
 HRESULT __stdcall ProfilerCallback::Initialize(IUnknown* pICorProfilerInfoUnk)
 {
 	std::cout << "init";
+	pICorProfilerInfoUnk->QueryInterface(IID_ICorProfilerInfo2, (LPVOID*)&iCorProfilerInfo);
+	iCorProfilerInfo->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS);
+
 	return S_OK;
 }
 
@@ -273,6 +280,7 @@ HRESULT __stdcall ProfilerCallback::RootReferences(ULONG rootRefs, ObjectID root
 
 HRESULT __stdcall ProfilerCallback::ExceptionThrown(ObjectID thrownObjectID)
 {
+	std::cout << "from profiler: \t\t\texception thrown in thread " << std::this_thread::get_id() << "\r\n";
 	return S_OK;
 }
 
