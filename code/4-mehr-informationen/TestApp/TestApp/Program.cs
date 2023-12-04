@@ -1,15 +1,11 @@
-﻿using System.Runtime.InteropServices;
-
-namespace TestApp
+﻿namespace TestApp
 {
     public class Program
     {
-        [DllImport("kernel32.dll")]
-        static extern int GetCurrentThreadId();
         public static void Main()
         {
-            Console.WriteLine($"Hello, World from native thread {GetCurrentThreadId()}!");
-
+            Console.ReadKey();
+            Console.WriteLine("Hello, World!");
             try
             {
                 throw new Exception();

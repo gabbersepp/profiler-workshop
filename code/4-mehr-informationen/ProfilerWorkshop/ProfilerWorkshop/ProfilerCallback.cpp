@@ -2,7 +2,6 @@
 #include "ProfilerCallback.h"
 #include<iostream>
 #include <corprof.h>
-#include <thread>
 
 CComQIPtr<ICorProfilerInfo2> iCorProfilerInfo;
 
@@ -27,6 +26,45 @@ HRESULT __stdcall ProfilerCallback::Initialize(IUnknown* pICorProfilerInfoUnk)
 
 	return S_OK;
 }
+
+bool GetClassNameByClassId(ClassID classId, char* output, ULONG outputLength) {
+	ModuleID moduleId;
+	mdTypeDef typeDef;
+	HRESULT hresult = iCorProfilerInfo->GetClassIDInfo(classId, &moduleId, &typeDef);
+	IMetaDataImport* metadata;
+	wchar_t* typeName = new wchar_t[outputLength];
+	ULONG read = 0;
+
+	if (hresult < 0 || moduleId == 0) {
+		return false;
+	}
+
+	hresult = iCorProfilerInfo->GetModuleMetaData(moduleId, ofRead, IID_IMetaDataImport, (IUnknown**) & metadata);
+	hresult = metadata->GetTypeDefProps(typeDef, typeName, outputLength, &read, NULL, NULL);
+	metadata->Release();
+
+	memset(output, 0, outputLength);
+	wcstombs(output, typeName, outputLength);
+	delete[] typeName;
+	return true;
+}
+
+bool GetClassNameByObjectId(ObjectID objectId, char* output, ULONG outputLength) {
+	ClassID classId;
+	iCorProfilerInfo->GetClassFromObject(objectId, &classId);
+	return GetClassNameByClassId(classId, output, outputLength);
+}
+
+HRESULT __stdcall ProfilerCallback::ExceptionThrown(ObjectID thrownObjectID)
+{
+	char* className = new char[100];
+	GetClassNameByObjectId(thrownObjectID, className, 100);
+	std::cout << "from profiler: \t\t\texception thrown:\r\n" << className;
+	delete[] className;
+	return S_OK;
+}
+
+#pragma region unused
 
 HRESULT __stdcall ProfilerCallback::Shutdown()
 {
@@ -278,12 +316,6 @@ HRESULT __stdcall ProfilerCallback::RootReferences(ULONG rootRefs, ObjectID root
 	return S_OK;
 }
 
-HRESULT __stdcall ProfilerCallback::ExceptionThrown(ObjectID thrownObjectID)
-{
-	std::cout << "from profiler: \t\t\texception thrown in thread " << std::this_thread::get_id() << "\r\n";
-	return S_OK;
-}
-
 HRESULT __stdcall ProfilerCallback::ExceptionUnwindFunctionEnter(FunctionID functionID)
 {
 	return S_OK;
@@ -409,3 +441,6 @@ HRESULT __stdcall ProfilerCallback::HandleDestroyed(GCHandleID handleID)
 {
 	return S_OK;
 }
+
+#pragma endregion unused
+
