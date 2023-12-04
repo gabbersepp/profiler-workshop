@@ -2,6 +2,9 @@
 #include "ProfilerCallback.h"
 #include<iostream>
 #include <corprof.h>
+bool GetClassNameByClassId(ClassID classId, char* output, ULONG outputLength);
+bool GetClassNameByObjectId(ObjectID objectId, char* output, ULONG outputLength);
+bool GetFunctionNameByFunctionId(FunctionID functionId, char* output, ULONG outputLength);
 
 CComQIPtr<ICorProfilerInfo2> iCorProfilerInfo;
 
@@ -18,13 +21,79 @@ void ProfilerCallback::FinalRelease()
 {
 }
 
+void __stdcall EnterCallbackCpp(FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func,
+	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo) {
+	char* output = new char[1000];
+	memset(output, 0, 1000);
+
+	GetFunctionNameByFunctionId(funcId, output, 1000);
+
+	std::cout << "Function enter: " << output << "\r\n";
+
+	delete[] output;
+}
+
+void __declspec(naked) FnEnterCallback(
+	FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func,
+	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo) {
+	__asm {
+		push dword ptr[ESP + 16]
+		push dword ptr[ESP + 16]
+		push dword ptr[ESP + 16]
+		push dword ptr[ESP + 16]
+		CALL EnterCallbackCpp
+
+		ret 16
+	}
+}
+
+void __declspec(naked) FnLeaveCallback(
+	FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func,
+	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo) {
+	__asm {
+		ret 16
+	}
+}
+
+void __declspec(naked) FnTailcallCallback(FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func) {
+	__asm {
+		ret 8
+	}
+}
+
 HRESULT __stdcall ProfilerCallback::Initialize(IUnknown* pICorProfilerInfoUnk)
 {
 	std::cout << "init";
 	pICorProfilerInfoUnk->QueryInterface(IID_ICorProfilerInfo2, (LPVOID*)&iCorProfilerInfo);
-	iCorProfilerInfo->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS);
+	iCorProfilerInfo->SetEventMask(COR_PRF_MONITOR_EXCEPTIONS | COR_PRF_MONITOR_ENTERLEAVE);
+	iCorProfilerInfo->SetEnterLeaveFunctionHooks2((FunctionEnter2*) & FnEnterCallback, (FunctionLeave2*) & FnLeaveCallback, (FunctionTailcall2*) & FnTailcallCallback);
 
 	return S_OK;
+}
+
+bool GetFunctionNameByFunctionId(FunctionID functionId, char* output, ULONG outputLength) {
+	IMetaDataImport* metadata;
+	mdMethodDef methodToken;
+	mdTypeDef typeDefToken;
+	wchar_t* functionName = new wchar_t[1000];
+	ULONG wcbCount;
+	memset(functionName, 0, 1000);
+
+	iCorProfilerInfo->GetTokenAndMetaDataFromFunction(functionId, IID_IMetaDataImport, (IUnknown**)&metadata, &methodToken);
+	metadata->GetMethodProps(methodToken, &typeDefToken, functionName, 1000, &wcbCount, NULL, NULL, NULL, NULL, NULL);
+	wcstombs(output, functionName, outputLength);
+	metadata->Release();
+	delete[] functionName;
+
+	return true;
 }
 
 bool GetClassNameByClassId(ClassID classId, char* output, ULONG outputLength) {

@@ -6,16 +6,13 @@
         {
             Console.ReadKey();
             Console.WriteLine("Hello, World!");
-            try
-            {
-                throw new Exception();
-            }
-            catch (Exception e)
-            {
-
-            }
-
+            Blub();
             Console.ReadKey();
+        }
+
+        public static void Blub()
+        {
+            Console.WriteLine("Blub");
         }
     }
 }
