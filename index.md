@@ -529,23 +529,35 @@ In unserem Beispiel einfach: Nur ein Parameter
 - value Type: Pointer zu Wert
 - object: Pointer auf Pointer zu Method Table Pointer
 - struct: Pointer zu struct
-- `fastcall`: Parameter in Register, werden extra in Speicher geschoben
-
-TODO: stimmt fastcall?
-https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions?view=msvc-170
 
 ---
 
 # Funktionsparameter auslesen - Repräsentation der Daten 
 
+**Um die Daten interpretieren** zu könnn, muss man wissen, wie die Daten im Speicher aussehen. Wie kommt man an diese Info?
+
 - Bücher lesen
-- Debuggen
-- Siehe Beispiel
+- Microsoft fragen :-P
+- Oder einfach Debuggen
 
 Hierzu:
 `fastcall`: Parameter landen v.l.n.r in `RCX, RDX, R8, R9`
 
-todo: alignment von objekten zeigen
+<!--
+static void Main(string[] args)
+{
+    IntArrayFn(new int[] { 1,2,3,4,5,6,7,8,9,10});
+}
+
+static void IntArrayFn(int[] intArray)
+{
+    // place a breakpoint here and leave the method empty
+}
+
+- Adresse von intArray holen (RCX, da static)
+- in Speicher schauen
+- MT, Array Length, Data
+-->
 ---
 
 # Funktionsparameter auslesen - Code
@@ -555,4 +567,10 @@ Siehe Code
 ---
 
 # Stackoverflow erkennen
+
+Siehe Code
+
+---
+
+# Ende
 

@@ -1,5 +1,6 @@
 
 extern EnterCallbackCpp:proc
+extern LeaveCallbackCpp:proc
 
 _TEXT   SEGMENT
 
@@ -18,6 +19,12 @@ FnEnterCallback ENDP
 PUBLIC FnLeaveCallback
 
 FnLeaveCallback PROC
+  push rbp
+  mov rbp, rsp
+  sub RSP, 20h
+  CALL LeaveCallbackCpp
+  mov rsp, rbp
+  pop rbp
   ret
 FnLeaveCallback ENDP
 

@@ -26,14 +26,16 @@ int __stdcall CallCppWithin(int returnValue, char* str, int* strLength) {
     return returnValue;
 }
 
+// mit __declspec können wir besser kontrollieren, was in ESP drin ist
 __declspec(naked) int __cdecl UseAsmCallCppWithin(int returnValue, char* str, int* strLength) {
-    // wir nehmen EBP, weil ESP durch Epilog/Prolog modifiziert wird
     __asm {
         push dword ptr[ESP + 12]
         push dword ptr[ESP + 12]
         push dword ptr[ESP + 12]
         CALL CallCppWithin
 
+        // wenn wir CallCppWithin als __stdcall definieren, müssen wir den Stack wieder aufräumen, d.h. ESP um 3*4 Bytes erhöhen
+        // andernfalls wird ret nicht den richtigen IP finden auf dem Stack
         ret
     }
 }

@@ -21,6 +21,8 @@ void ProfilerCallback::FinalRelease()
 {
 }
 
+int enterCounter = 0;
+
 // just add "extern C" to leave the function name as it is, otherwise it will be manipulated during compiling. Then we can not call it anymore from assembler
 extern "C" void _stdcall EnterCallbackCpp(FunctionID funcId,
 	UINT_PTR clientData,
@@ -31,39 +33,31 @@ extern "C" void _stdcall EnterCallbackCpp(FunctionID funcId,
 
 	GetFunctionNameByFunctionId(funcId, output, 1000);
 
-	if (strcmp(output, "Blub_i") == 0) {
-		std::cout << "Function enter: Blub_i with value:";
-		COR_PRF_FUNCTION_ARGUMENT_RANGE range = argumentInfo->ranges[0];
-		UINT_PTR valuePtr = range.startAddress;
-		int* ptr = (int*)valuePtr;
-		std::cout << "" << * ptr << "\r\n";
-	}
+	if (strcmp(output, "Test") == 0) {
+		enterCounter++;
 
-	if (strcmp(output, "Blub_arr") == 0) {
-		std::cout << "Function enter: Blub_arr with values: ";
-		int** ptrToMethodTablePointer = (int**)(argumentInfo->ranges[0].startAddress);
-		int* methodTablePtr = *ptrToMethodTablePointer;
-		methodTablePtr += 2; //skip MethodTablePtr
-		long length = *(long*)methodTablePtr;
-		std::cout << "Length: " << length << ", ";
-		methodTablePtr += 2; // skip array length
-		for (int i = 0; i < length; i++) {
-			std::cout << *(methodTablePtr + i);
+		std::cout << "\t\t\tRecursive call " << enterCounter << "\r\n";
+
+		if (enterCounter > 300) {
+			std::cout << "Stackoverflow detected";
+			Sleep(30000);
+			exit(-1);
 		}
 	}
 
-	if (strcmp(output, "Blub_str") == 0) {
-		std::cout << "Function enter: Blub_str with values: ";
-		char** ptrToMethodTablePointer = (char**)(argumentInfo->ranges[0].startAddress);
-		char* methodTablePtr = *ptrToMethodTablePointer;
-		methodTablePtr += 8; //skip MethodTablePtr
-		int length = *(int*)methodTablePtr;
-		std::cout << "Length: " << length << ", ";
-		methodTablePtr += 4; // skip string length
-		for (int i = 0; i < length; i++) {
-			std::cout << *methodTablePtr;
-			methodTablePtr += 2;
-		}
+	delete[] output;
+}
+extern "C" void _stdcall LeaveCallbackCpp(FunctionID funcId,
+	UINT_PTR clientData,
+	COR_PRF_FRAME_INFO func,
+	COR_PRF_FUNCTION_ARGUMENT_INFO * argumentInfo) {
+	char* output = new char[1000];
+	memset(output, 0, 1000);
+
+	GetFunctionNameByFunctionId(funcId, output, 1000);
+
+	if (strcmp(output, "Test") == 0) {
+		enterCounter--;
 	}
 
 	delete[] output;
@@ -110,6 +104,12 @@ void __declspec(naked) FnLeaveCallback(
 	COR_PRF_FRAME_INFO func,
 	COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo) {
 	__asm {
+		push dword ptr[ESP + 16]
+		push dword ptr[ESP + 16]
+		push dword ptr[ESP + 16]
+		push dword ptr[ESP + 16]
+		CALL LeaveCallbackCpp
+
 		ret 16
 	}
 }
