@@ -2,9 +2,11 @@
 #include "ProfilerCallback.h"
 #include<iostream>
 #include <corprof.h>
+#include<corhdr.h>
 bool GetClassNameByClassId(ClassID classId, char* output, ULONG outputLength);
 bool GetClassNameByObjectId(ObjectID objectId, char* output, ULONG outputLength);
 bool GetFunctionNameByFunctionId(FunctionID functionId, char* output, ULONG outputLength);
+void GetFunctionSignature(FunctionID funcId);
 
 CComQIPtr<ICorProfilerInfo2> iCorProfilerInfo;
 
@@ -31,41 +33,9 @@ extern "C" void _stdcall EnterCallbackCpp(FunctionID funcId,
 
 	GetFunctionNameByFunctionId(funcId, output, 1000);
 
-	if (strcmp(output, "Blub_i") == 0) {
-		std::cout << "Function enter: Blub_i with value:";
-		COR_PRF_FUNCTION_ARGUMENT_RANGE range = argumentInfo->ranges[0];
-		UINT_PTR valuePtr = range.startAddress;
-		int* ptr = (int*)valuePtr;
-		std::cout << "" << * ptr << "\r\n";
+	if (strcmp(output, "Blub") == 0) {
+		GetFunctionSignature(funcId);
 	}
-
-	if (strcmp(output, "Blub_arr") == 0) {
-		std::cout << "Function enter: Blub_arr with values: ";
-		int** ptrToMethodTablePointer = (int**)(argumentInfo->ranges[0].startAddress);
-		int* methodTablePtr = *ptrToMethodTablePointer;
-		methodTablePtr += 2; //skip MethodTablePtr
-		long length = *(long*)methodTablePtr;
-		std::cout << "Length: " << length << ", ";
-		methodTablePtr += 2; // skip array length
-		for (int i = 0; i < length; i++) {
-			std::cout << *(methodTablePtr + i);
-		}
-	}
-
-	if (strcmp(output, "Blub_str") == 0) {
-		std::cout << "Function enter: Blub_str with values: ";
-		char** ptrToMethodTablePointer = (char**)(argumentInfo->ranges[0].startAddress);
-		char* methodTablePtr = *ptrToMethodTablePointer;
-		methodTablePtr += 8; //skip MethodTablePtr
-		int length = *(int*)methodTablePtr;
-		std::cout << "Length: " << length << ", ";
-		methodTablePtr += 4; // skip string length
-		for (int i = 0; i < length; i++) {
-			std::cout << *methodTablePtr;
-			methodTablePtr += 2;
-		}
-	}
-
 	delete[] output;
 }
 
@@ -134,6 +104,77 @@ HRESULT __stdcall ProfilerCallback::Initialize(IUnknown* pICorProfilerInfoUnk)
 	return S_OK;
 }
 
+void GetFunctionSignature(FunctionID funcId) {
+	ClassID classId;
+	ModuleID moduleId;
+	mdToken token;
+	IMetaDataImport* metadata;
+	mdTypeDef type;
+	ULONG size;
+	ULONG attributes;
+	PCCOR_SIGNATURE sig;
+	ULONG blobSize;
+	ULONG codeRVA;
+	DWORD flags;
+
+	wchar_t* funcName = new wchar_t[300];
+
+	iCorProfilerInfo->GetFunctionInfo(funcId, &classId, &moduleId, &token);
+	iCorProfilerInfo->GetModuleMetaData(moduleId, ofRead, IID_IMetaDataImport, (IUnknown**)&metadata);
+
+	metadata->GetMethodProps(token, &type, funcName, 299, &size, &attributes, &sig, &blobSize, &codeRVA, &flags);
+
+	char* funcNameChar = new char[300];
+	memset(funcNameChar, 0, 300);
+	wcstombs(funcNameChar, funcName, 300);
+
+	// *sig enthält blobSize bytes und beschreibt die Funktion
+	if (sig[0] == 0) {
+		std::cout << "static ";
+	}
+
+	// sig[2] == Return Type
+	if (sig[2] == ELEMENT_TYPE_VOID) {
+		std::cout << "void ";
+	}
+	else if (sig[2] == ELEMENT_TYPE_I4) {
+		std::cout << "int ";
+	}
+
+	std::cout << funcNameChar << "(";
+	
+	HCORENUM hEnum = 0;
+	ULONG paramCount;
+	mdParamDef* paramDef = new mdParamDef[sig[1]];
+
+	metadata->EnumParams(&hEnum, token, paramDef, sig[1], &paramCount);
+
+	// sig[1] == Anzahl Parameter
+	for (int i = 0; i < sig[1]; i++) {
+		metadata->GetParamProps(paramDef[i], NULL, NULL, funcName, 300, NULL, NULL, NULL, NULL, NULL);
+		wcstombs(funcNameChar, funcName, 300);
+
+		// Parametertypen kommen im Anschluss an die Anzahl der Parameter
+		// Das funktioniert so aber nur bei den built-in Typen
+		// Das Beispiel wird zu einem späteren Zeitpunkt weiter ausgebaut
+		if (sig[i + 3] == ELEMENT_TYPE_I4) {
+			std::cout << "int ";
+		}
+		else if (sig[i + 3] == ELEMENT_TYPE_BOOLEAN) {
+			std::cout << "bool ";
+		}
+
+		std::cout << funcNameChar;
+
+		if (i < sig[1] - 1) {
+			std::cout << ", ";
+		}
+	}
+
+	std::cout << ");\r\n";
+
+	return;
+}
 bool GetFunctionNameByFunctionId(FunctionID functionId, char* output, ULONG outputLength) {
 	IMetaDataImport* metadata;
 	mdMethodDef methodToken;
