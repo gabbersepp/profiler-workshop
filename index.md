@@ -165,6 +165,10 @@ Einziger Ort, um den Profiler zu konfigurieren
 - VS Debugger attachen (nativen Code)
 - Breakpoints setzen
 
+<!--
+man darf nur nativen code auswählen, nicht managed + nativ
+-->
+
 ---
 
 # Mehr Informationen rausholen
@@ -174,6 +178,10 @@ Einziger Ort, um den Profiler zu konfigurieren
 - `_CRT_SECURE_NO_WARNINGS` um `wcstombs()` nutzen zu können
 - für x86 und x64!
 ![](./img/4/preprocessor.jpg)
+
+<!--
+Die methode nutzen wchar_t
+-->
 ---
 
 # Mehr Infos - Bsp GetClassNameByObjectId
@@ -195,8 +203,6 @@ memset & wcstombs
 - Speicher für lokale Variablen, Sicherungen des aktuellen Callframes, etc
 - Stack wächst von oben nach unten
 - `PUSH` reduziert `SP` und legt Wert ab nach `[SP]`
-
-![](./img/exkurs/stack.jpg)
 
 ---
 
@@ -225,8 +231,8 @@ memset & wcstombs
 # Exkurs: Epilog und Prolog
 
 - Compiler erstellt Epilog und Prolog
-- Compiler sichert Register am Anfang
-- Compiler räumt Stack auf
+- Prolog sichert Register am Anfang, speichert die Argumente im Stack, ...
+- Epilog räumt Stack auf
 - Stellt Register wieder her
 - Abhängig von Calling Convention!
 - All das passiert mit `declspec(naked)` nicht
@@ -234,20 +240,10 @@ memset & wcstombs
 
 ---
 
-# Exkurs: Epilog und Prolog
-
----
-
-**Prolog:** Wenige Zeilen Code am Anfang einer Funktion um Stack und Register vorzubereiten.
-
-**Epilog:** Wenige Zeilen am Ende einer Funktion, um Stack und Register wieder auf den vorherigen Zustand zu bringen.
-
----
-
 # Exkurs: Calling Convention - cdecl
 
 - Parameter werden v.r.n.l. gepusht
-- Funktion entfernt Pareameter nicht von Stack
+- Funktion entfernt Parameter nicht von Stack
 
 ---
 
@@ -372,7 +368,7 @@ void __declspec(naked) FnTailcallCallback(FunctionID funcId,
 	UINT_PTR clientData,
 	COR_PRF_FRAME_INFO func) {
 	__asm {
-		ret 8
+		ret 12
 	}
 }
 ```
@@ -464,6 +460,11 @@ void __stdcall EnterCallbackCpp(FunctionID funcId,
 - Einstellungen der `.asm` Datei öffnen
 ![](./img/6/masm2.jpg)
 
+<!--
+Wechselt man auf x86 zurück, kann nicht kompiliert werden.
+m.E. ging das in früheren Versionen? Mit VS2022 zumindest nicht mehr.
+-->
+
 ---
 
 # FunctionEnter/Leave - 64 Bit - fastcall
@@ -534,7 +535,7 @@ In unserem Beispiel einfach: Nur ein Parameter
 
 # Funktionsparameter auslesen - Repräsentation der Daten 
 
-**Um die Daten interpretieren** zu könnn, muss man wissen, wie die Daten im Speicher aussehen. Wie kommt man an diese Info?
+**Um die Daten interpretieren** zu können, muss man wissen, wie die Daten im Speicher aussehen. Wie kommt man an diese Info?
 
 - Bücher lesen
 - Microsoft fragen :-P
